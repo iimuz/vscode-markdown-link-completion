@@ -2,6 +2,10 @@
   "name": "mdlink-completion",
   "displayName": "mdlink-completion",
   "description": "Markdown link completion.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iimuz/vscode-markdown-link-complition.git"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.87.0"
@@ -37,11 +41,10 @@
     "@typescript-eslint/parser": "^7.0.2",
     "@vscode/test-cli": "^0.0.6",
     "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^2.24.0",
     "cspell": "^8.5.0",
     "eslint": "^8.56.0",
     "prettier": "^3.2.5",
     "typescript": "^5.3.3"
-  },
-  "dependencies": {
   }
 }
