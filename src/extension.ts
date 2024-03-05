@@ -43,28 +43,53 @@ export function activate(context: vscode.ExtensionContext) {
             });
 
             // 先頭10行までの内容を取得して補完候補とする
-            let content: string[] = [];
-            let lineCount = 0;
+            const frontmatterHeader = "---";
+            // let content: string[] = [];
+            let lineCount = -1;
+            let title = "";
             for await (const line of rl) {
-              content.push(line.trim());
               lineCount++;
               if (lineCount > 10) {
                 break;
               }
+
+              const lineContent = line.trim();
+              if (lineCount === 0 && lineContent !== frontmatterHeader) {
+                // front matterで始まっていなければ終了
+                return undefined;
+              }
+              if (lineCount === 0 && lineContent === frontmatterHeader) {
+                // front matterのヘッダーなのでデータとしては破棄
+                continue;
+              }
+              if (lineContent !== 0 && lineContent === frontmatterHeader) {
+                // front matterの終わりなのでコンテンツの読み込み終了
+                break;
+              }
+
+              if (lineContent.startsWith("title: ") === false) {
+                continue;
+              }
+
+              title = lineContent.substring("title: ".length);
+              break;
             }
             const completionItem = new vscode.CompletionItem(
-              content[0],
+              title,
               vscode.CompletionItemKind.File,
             );
             completionItem.detail = file;
             completionItem.insertText = fileName;
-            completionItem.documentation = content.join("\n");
+            // completionItem.documentation = content.join("\n");
 
             return completionItem;
           }),
         );
+        const filteredCompletionItems = completionItems.filter(
+          (item): item is vscode.CompletionItem => item !== undefined,
+        );
 
-        return completionItems;
+        return filteredCompletionItems;
       },
     }),
   );
