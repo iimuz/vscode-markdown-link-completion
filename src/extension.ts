@@ -17,6 +17,16 @@ export function activate(context: vscode.ExtensionContext) {
         // token: vscode.CancellationToken,
         // context: vscode.CompletionContext,
       ) {
+        // カーソルの位置がリンクテキストの中にない場合は何もしない
+        const linePrefix = document
+          .lineAt(position)
+          .text.substring(0, position.character);
+        const linkRegex = /\]\(([^)]*)$/; // "](..."で閉じ括弧の前にいることを検出
+        if (!linkRegex.test(linePrefix)) {
+          return undefined;
+        }
+
+        // 補完候補となるmarkdownファイルの一覧を取得
         const dirPath = path.dirname(document.fileName);
         const files = fs.readdirSync(dirPath);
         const markdownFiles = files.filter((file) => file.endsWith(".md"));
