@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+const readline = require("readline");
 
 /**
  * 拡張機能をアクティブ化します。
@@ -11,9 +12,9 @@ import * as vscode from "vscode";
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.languages.registerCompletionItemProvider("markdown", {
-      provideCompletionItems(
+      async provideCompletionItems(
         document: vscode.TextDocument,
-        // position: vscode.Position,
+        position: vscode.Position,
         // token: vscode.CancellationToken,
         // context: vscode.CompletionContext,
       ) {
@@ -31,20 +32,37 @@ export function activate(context: vscode.ExtensionContext) {
         const files = fs.readdirSync(dirPath);
         const markdownFiles = files.filter((file) => file.endsWith(".md"));
 
-        const completionItems = markdownFiles.map((file) => {
-          const filePath = path.join(dirPath, file);
-          const content = fs.readFileSync(filePath, "utf-8");
-          const lines = content.split("\n");
-          const firstLine = lines[0].trim();
-          const completionItem = new vscode.CompletionItem(
-            firstLine,
-            vscode.CompletionItemKind.File,
-          );
-          completionItem.detail = file;
-          completionItem.insertText = file;
-          completionItem.documentation = content;
-          return completionItem;
-        });
+        const completionItems = await Promise.all(
+          markdownFiles.map(async (file) => {
+            const filePath = path.join(dirPath, file);
+            const fileName = path.parse(file).name;
+            const fileStream = fs.createReadStream(filePath);
+            const rl = readline.createInterface({
+              input: fileStream,
+              crlfDelay: Infinity,
+            });
+
+            // 先頭10行までの内容を取得して補完候補とする
+            let content: string[] = [];
+            let lineCount = 0;
+            for await (const line of rl) {
+              content.push(line.trim());
+              lineCount++;
+              if (lineCount > 10) {
+                break;
+              }
+            }
+            const completionItem = new vscode.CompletionItem(
+              content[0],
+              vscode.CompletionItemKind.File,
+            );
+            completionItem.detail = file;
+            completionItem.insertText = fileName;
+            completionItem.documentation = content.join("\n");
+
+            return completionItem;
+          }),
+        );
 
         return completionItems;
       },
