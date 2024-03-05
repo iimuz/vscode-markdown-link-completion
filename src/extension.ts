@@ -1,32 +1,48 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+import * as fs from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+/**
+ * 拡張機能をアクティブ化します。
+ * 拡張機能は、コマンドが初めて実行されたときにアクティブ化されます。
+ *
+ * @param context - VS Code の拡張機能コンテキスト
+ */
 export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log(
-    'Congratulations, your extension "mdlink-completion" is now active!',
-  );
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider("markdown", {
+      provideCompletionItems(
+        document: vscode.TextDocument,
+        // position: vscode.Position,
+        // token: vscode.CancellationToken,
+        // context: vscode.CompletionContext,
+      ) {
+        const dirPath = path.dirname(document.fileName);
+        const files = fs.readdirSync(dirPath);
+        const markdownFiles = files.filter((file) => file.endsWith(".md"));
 
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand(
-    "mdlink-completion.helloWorld",
-    () => {
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      vscode.window.showInformationMessage(
-        "Hello World from mdlink-completion!",
-      );
-    },
-  );
+        const completionItems = markdownFiles.map((file) => {
+          const filePath = path.join(dirPath, file);
+          const content = fs.readFileSync(filePath, "utf-8");
+          const lines = content.split("\n");
+          const firstLine = lines[0].trim();
+          const completionItem = new vscode.CompletionItem(
+            firstLine,
+            vscode.CompletionItemKind.File,
+          );
+          completionItem.detail = file;
+          completionItem.insertText = file;
+          completionItem.documentation = content;
+          return completionItem;
+        });
 
-  context.subscriptions.push(disposable);
+        return completionItems;
+      },
+    }),
+  );
 }
 
-// This method is called when your extension is deactivated
+/**
+ * 拡張機能を無効化する関数です。
+ */
 export function deactivate() {}
