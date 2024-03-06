@@ -36,46 +36,17 @@ export function activate(context: vscode.ExtensionContext) {
           markdownFiles.map(async (file) => {
             const filePath = path.join(dirPath, file);
             const fileName = path.parse(file).name;
-            const fileStream = fs.createReadStream(filePath);
-            const rl = readline.createInterface({
-              input: fileStream,
-              crlfDelay: Infinity,
-            });
 
             // 先頭10行までの内容を取得して補完候補とする
             const frontmatterHeader = "---";
-            // let content: string[] = [];
-            let lineCount = -1;
-            let title = "";
-            for await (const line of rl) {
-              lineCount++;
-              if (lineCount > 10) {
-                break;
-              }
-
-              const lineContent = line.trim();
-              if (lineCount === 0 && lineContent !== frontmatterHeader) {
-                // front matterで始まっていなければ終了
-                return undefined;
-              }
-              if (lineCount === 0 && lineContent === frontmatterHeader) {
-                // front matterのヘッダーなのでデータとしては破棄
-                continue;
-              }
-              if (lineContent !== 0 && lineContent === frontmatterHeader) {
-                // front matterの終わりなのでコンテンツの読み込み終了
-                break;
-              }
-
-              if (lineContent.startsWith("title: ") === false) {
-                continue;
-              }
-
-              title = lineContent.substring("title: ".length);
-              break;
-            }
+            const maxLineCount = 10;
+            const title = await readMarkdownFrontMatterContents(
+              filePath,
+              frontmatterHeader,
+              maxLineCount,
+            );
             const completionItem = new vscode.CompletionItem(
-              title,
+              title || file,
               vscode.CompletionItemKind.File,
             );
             completionItem.detail = file;
@@ -99,3 +70,51 @@ export function activate(context: vscode.ExtensionContext) {
  * 拡張機能を無効化する関数です。
  */
 export function deactivate() {}
+
+async function readMarkdownFrontMatterContents(
+  filePath: string,
+  frontmatterHeader: string,
+  maxLineCount: number,
+): Promise<string | undefined> {
+  const fileStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity,
+  });
+
+  let lineCount = -1;
+  let title = "";
+  for await (const line of rl) {
+    lineCount++;
+    if (lineCount > maxLineCount) {
+      break;
+    }
+
+    const lineContent = line.trim();
+    if (lineCount === 0 && lineContent !== frontmatterHeader) {
+      // front matterで始まっていなければ終了
+      rl.close();
+      fileStream.close();
+      return undefined;
+    }
+    if (lineCount === 0 && lineContent === frontmatterHeader) {
+      // front matterのヘッダーなのでデータとしては破棄
+      continue;
+    }
+    if (lineContent !== 0 && lineContent === frontmatterHeader) {
+      // front matterの終わりなのでコンテンツの読み込み終了
+      break;
+    }
+
+    if (lineContent.startsWith("title: ") === false) {
+      continue;
+    }
+
+    title = lineContent.substring("title: ".length);
+    break;
+  }
+  rl.close();
+  fileStream.close();
+
+  return title;
+}
